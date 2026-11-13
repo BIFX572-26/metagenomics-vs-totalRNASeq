@@ -139,15 +139,15 @@ python3 $cwd/make_SILVA_databases.py
 # Merge accession numbers of fasta file and taxid file and add kraken2-specific
 # info to each sequence name (when adding fasta sequences to a kraken2 DB, they
 # need to contain the taxid in the name):
-./subscripts/mergeFilesOnColumn.pl SILVA_${VER}_SSU_LSURef_NR99_tax_silva_trunc_edited.tab \
+$cwd/subscripts/mergeFilesOnColumn.pl SILVA_${VER}_SSU_LSURef_NR99_tax_silva_trunc_edited.tab \
 SILVA_accession_numbers_and_NCBI_taxids.txt 1 1 \
 | sed 's/^/>/g' | awk -F "\t" '{ print $1 "|kraken:taxid|" $5 " " $2 "\n" $3}' \
 > SILVA_${VER}_SSU_LSURef_NR99_tax_silva_trunc_kraken2.fasta
 
 
 # Make the kraken2 DB
-mkdir $kraken2DB
-mkdir $kraken2DB/taxonomy
+mkdir -p $kraken2DB
+mkdir -p $kraken2DB/taxonomy
 cp ${cwd}/make_SILVA_databases/nodes.dmp ${cwd}/make_SILVA_databases/names.dmp $kraken2DB/taxonomy # Prepare the taxonomy for the kraken2 DB
 kraken2-build --add-to-library ${cwd}/make_SILVA_databases/SILVA_${VER}_SSU_LSURef_NR99_tax_silva_trunc_kraken2.fasta --db $kraken2DB
 kraken2-build --build --db $kraken2DB
