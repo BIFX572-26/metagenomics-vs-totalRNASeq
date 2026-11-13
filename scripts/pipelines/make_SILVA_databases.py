@@ -3,9 +3,10 @@ print("Processing files in python...")
 import sys,re,pandas as pd, numpy as np, csv
 
 # Set variable names
+SILVA_VERSION="138.2"
 NCBI_scientific_input="NCBI_staxids_scientific.txt"
 NCBI_non_scientific_input="NCBI_staxids_non_scientific.txt"
-taxmap_input="taxmap_slv_ssu_lsu_ref_nr_138.1.txt"
+taxmap_input=f"taxmap_slv_ssu_lsu_ref_nr_{SILVA_VERSION}.txt"
 
 # Read in NCBI scientific names file as dictionary
 NCBI_scientific = open(NCBI_scientific_input,'r')
@@ -36,7 +37,7 @@ second_last_rank_lst=taxmap_df["path"].str.split(";")
 taxmap_df["second_last_rank"]=second_last_rank_lst.str[-2]
 # Extract organism name of taxmap df, replace unwanted characters,
 # keep only first two words (idealy genus+species) and turn them into df col "species"
-name=taxmap_df["organism_name"].str.replace('[\-\[\]\(\)\\/]', '').str.split()
+name=taxmap_df["organism_name"].str.replace(r'[-()\[\]\\/]', '', regex=True).str.split()
 taxmap_df['species'] = name.str[0].str.cat(name.str[1], sep=" ", na_rep='' ).str.strip()
 # Replace all species names by NA if their first word (ideally genus) doesn't
 # match the second last rank (which should be genus ideally)
@@ -87,7 +88,7 @@ with open("SILVA_accession_numbers_and_NCBI_taxids.txt", 'w') as f:
 # ======= 2. kraken2
 
 # Set variable names:
-tax_slv_input="tax_slv_ssu_138.1.txt"
+tax_slv_input=f"tax_slv_ssu_{SILVA_VERSION}.txt"
 
 # Make nodes.dmp:
 
@@ -95,7 +96,7 @@ tax_slv_input="tax_slv_ssu_138.1.txt"
 ## from the LSU tax file are also part of the SSU tax file):
 tax_slv_df_child=pd.read_csv(tax_slv_input, sep='\t', names=['path','taxID','rank','remark','release'], usecols=['path','taxID','rank'])
 ## Add paths from species and set their rank to species
-tax_slv_df_child_sp=tax_slv_df_child.append(pd.DataFrame(taxmap_df_sp["path"]))
+tax_slv_df_child_sp=pd.concat([tax_slv_df_child, taxmap_df_sp[["path"]]])
 tax_slv_df_child_sp['rank']=tax_slv_df_child_sp['rank'].fillna("species")
 ## Get NCBI ID for every child and parent path, this now includes all ranks
 child_ncbi_id=[]
@@ -150,7 +151,7 @@ tax_slv_df_child_sp["parent_ncbi_id"]=parent_ncbi_id
 tax_slv_df_child_sp["numranks"]=tax_slv_df_child_sp["path"].str.count(";")
 ## Add a row with root as first line, otherwise we can't make the nodes.dmp
 ## file as there is no parent ID for domains:
-tax_slv_df_child_sp.loc[-1] = ['root;', '1', 'no rank', '1', '1', '1']
+tax_slv_df_child_sp.loc[-1] = ['root;', 1, 'no rank', '1', '1', 1]
 ## Only keep one path per child_ncbi_id, therefore sort df by child_ncbi_id and
 ## then numranks and keep only first occurence of child_ncbi_id
 ## (= path with the lowest # of ranks per child_ncbi_id)
