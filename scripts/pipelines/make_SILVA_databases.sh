@@ -7,6 +7,8 @@
 #   Python
 #   BLAST
 #   Kraken2
+module load blast
+module load kraken
 
 # Set variable to FULL directory path for generated SILVA kraken2 and BLAST DB
 # Note: kraken2 won't work if the DB is moved after building
@@ -78,7 +80,7 @@ SILVA_${VER}_LSURef_NR99_tax_silva_trunc.fasta \
 > SILVA_${VER}_SSU_LSURef_NR99_tax_silva_trunc.fasta
 
 # Turn fasta into tab delimited file and edit so that accession numbers can be merged later
-./subscripts/fasta_to_tab SILVA_${VER}_SSU_LSURef_NR99_tax_silva_trunc.fasta \
+${cwd}/subscripts/fasta_to_tab SILVA_${VER}_SSU_LSURef_NR99_tax_silva_trunc.fasta \
 | sed 's/ /\t/' > SILVA_${VER}_SSU_LSURef_NR99_tax_silva_trunc_edited.tab
 
 # Edit names_ncbi.dmp file into a file only containing scientific names
