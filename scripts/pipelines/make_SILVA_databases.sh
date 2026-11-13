@@ -3,22 +3,39 @@
 # Script to set up a SILVA SSU and LSU NR99 BLASTand kraken2 DB
 
 # Usage: make_SILVA_databases.sh path_to_new_kraken2_DB_directory path_to_new_BLAST_DB_directory
+# Dependencies:
+#   Python
+#   BLAST
+#   Kraken2
 
 # Set variable to FULL directory path for generated SILVA kraken2 and BLAST DB
 # Note: kraken2 won't work if the DB is moved after building
-kraken2DB=$1
-blastDB=$2
+kraken2DB=/mnt/cluster_storage/data/ref/metagenomics_vs_totalRNA/kraken_db #$1
+blastDB=/mnt/cluster_storage/data/ref/metagenomics_vs_totalRNA/blast_db #$2
+
+# ended up trying slightly newer version
+VER="138.2"
 
 cwd=$(pwd)
-mkdir make_SILVA_databases/
+mkdir -p make_SILVA_databases/
 cd make_SILVA_databases/
 
 # Get SILVA fasta and taxonomy files
-wget https://www.arb-silva.de/fileadmin/silva_databases/current/Exports/SILVA_138.1_SSURef_NR99_tax_silva_trunc.fasta.gz
-wget https://www.arb-silva.de/fileadmin/silva_databases/current/Exports/SILVA_138.1_LSURef_NR99_tax_silva_trunc.fasta.gz
-wget https://www.arb-silva.de/fileadmin/silva_databases/current/Exports/taxonomy/taxmap_slv_lsu_ref_nr_138.1.txt.gz
-wget https://www.arb-silva.de/fileadmin/silva_databases/current/Exports/taxonomy/taxmap_slv_ssu_ref_nr_138.1.txt.gz
-wget https://www.arb-silva.de/fileadmin/silva_databases/current/Exports/taxonomy/tax_slv_ssu_138.1.txt.gz
+#wget      https://www.arb-silva.de/fileadmin/silva_databases/current/Exports/SILVA_138.1_SSURef_NR99_tax_silva_trunc.fasta.gz
+wget https://www.arb-silva.de/fileadmin/silva_databases/release_$VER/Exports/SILVA_${VER}_SSURef_NR99_tax_silva_trunc.fasta.gz
+
+#wget      https://www.arb-silva.de/fileadmin/silva_databases/current/Exports/SILVA_138.1_LSURef_NR99_tax_silva_trunc.fasta.gz
+wget https://www.arb-silva.de/fileadmin/silva_databases/release_$VER/Exports/SILVA_${VER}_LSURef_NR99_tax_silva_trunc.fasta.gz
+
+#wget      https://www.arb-silva.de/fileadmin/silva_databases/current/Exports/taxonomy/taxmap_slv_lsu_ref_nr_138.1.txt.gz
+wget https://www.arb-silva.de/fileadmin/silva_databases/release_$VER/Exports/taxonomy/taxmap_slv_lsu_ref_nr_$VER.txt.gz
+
+#wget      https://www.arb-silva.de/fileadmin/silva_databases/current/Exports/taxonomy/taxmap_slv_ssu_ref_nr_138.1.txt.gz
+wget https://www.arb-silva.de/fileadmin/silva_databases/release_$VER/Exports/taxonomy/taxmap_slv_ssu_ref_nr_$VER.txt.gz
+
+#wget      https://www.arb-silva.de/fileadmin/silva_databases/current/Exports/taxonomy/tax_slv_ssu_138.1.txt.gz
+wget https://www.arb-silva.de/fileadmin/silva_databases/release_$VER/Exports/taxonomy/tax_slv_ssu_$VER.txt.gz
+
 gunzip *.gz
 
 # Get NCBI taxonomy files
@@ -29,11 +46,11 @@ mv names.dmp names_ncbi.dmp
 # Edit SILVA taxonomy file:
 # SILVA taxonomy file needs to have two columns, first one with accession number
 # and second one with taxonomy path
-sed -e 's/\t/./' -e 's/\t/./' taxmap_slv_ssu_ref_nr_138.1.txt > taxmap_slv_ssu_lsu_ref_nr_138.1.txt
-tail -n +2 taxmap_slv_ssu_lsu_ref_nr_138.1.txt | cut -f1 | sed s'/\./\\\./g' > grep_list.txt
-sed -e 's/\t/./' -e 's/\t/./' taxmap_slv_lsu_ref_nr_138.1.txt | tail -n +2 \
-| grep -v -f grep_list.txt >> taxmap_slv_ssu_lsu_ref_nr_138.1.txt
-sed -i "s/ <[a-zA-Z -,.&:'0-9]*>//" taxmap_slv_ssu_lsu_ref_nr_138.1.txt
+sed -e 's/\t/./' -e 's/\t/./' taxmap_slv_ssu_ref_nr_$VER.txt > taxmap_slv_ssu_lsu_ref_nr_$VER.txt
+tail -n +2 taxmap_slv_ssu_lsu_ref_nr_$VER.txt | cut -f1 | sed s'/\./\\\./g' > grep_list.txt
+sed -e 's/\t/./' -e 's/\t/./' taxmap_slv_lsu_ref_nr_$VER.txt | tail -n +2 \
+| grep -v -f grep_list.txt >> taxmap_slv_ssu_lsu_ref_nr_$VER.txt
+sed -i "s/ <[a-zA-Z -,.&:'0-9]*>//" taxmap_slv_ssu_lsu_ref_nr_$VER.txt
 # 1. concatenate ssu and lsu taxmap files (with access id and start and stop merged)
 #    into one ssu_lsu file with one header
 #	  	 note: as of 04 Sep 2020, the available SILVA LSU and SSU taxmap files contain
@@ -51,18 +68,18 @@ sed -i "s/ <[a-zA-Z -,.&:'0-9]*>//" taxmap_slv_ssu_lsu_ref_nr_138.1.txt
 # them from the SSU file with a chunk of code that I got from the support
 # (filter-fasta.awk is a separate subscript):
 RE="^>(KY7649(2[1278]|58)|LNRQ01000003)\\\\."
-cat SILVA_138.1_SSURef_NR99_tax_silva_trunc.fasta \
+cat SILVA_${VER}_SSURef_NR99_tax_silva_trunc.fasta \
 | filter-fasta.awk -v expression=$RE -v printMatch=0 \
-> SILVA_138.1_SSURef_NR99_tax_silva_trunc_filtered.fasta
+> SILVA_${VER}_SSURef_NR99_tax_silva_trunc_filtered.fasta
 
 # Prepare the SSU and LSU SILVA DB
-cat SILVA_138.1_SSURef_NR99_tax_silva_trunc_filtered.fasta \
-SILVA_138.1_LSURef_NR99_tax_silva_trunc.fasta \
-> SILVA_138.1_SSU_LSURef_NR99_tax_silva_trunc.fasta
+cat SILVA_${VER}_SSURef_NR99_tax_silva_trunc_filtered.fasta \
+SILVA_${VER}_LSURef_NR99_tax_silva_trunc.fasta \
+> SILVA_${VER}_SSU_LSURef_NR99_tax_silva_trunc.fasta
 
 # Turn fasta into tab delimited file and edit so that accession numbers can be merged later
-fasta_to_tab SILVA_138.1_SSU_LSURef_NR99_tax_silva_trunc.fasta \
-| sed 's/ /\t/' > SILVA_138.1_SSU_LSURef_NR99_tax_silva_trunc_edited.tab
+./subscripts/fasta_to_tab SILVA_${VER}_SSU_LSURef_NR99_tax_silva_trunc.fasta \
+| sed 's/ /\t/' > SILVA_${VER}_SSU_LSURef_NR99_tax_silva_trunc_edited.tab
 
 # Edit names_ncbi.dmp file into a file only containing scientific names
 sed "s/ <[a-zA-Z -,.&:'0-9]*>//g" names_ncbi.dmp | grep 'scientific name' \
@@ -114,221 +131,31 @@ sed "s/ <[a-zA-Z -,.&:'0-9]*>//g" names_ncbi.dmp | grep -v 'scientific name' \
 # NCBI (like names.dmp, nodes.dmp, and seqid2taxid from NCBI). We're going to do
 # that in python:
 
-python3 - << EOF # switch to python
+python3 $cwd/make_SILVA_databases.py
 
-print("Processing files in python...")
-
-import sys,re,pandas as pd, numpy as np, csv
-
-# Set variable names
-NCBI_scientific_input="NCBI_staxids_scientific.txt"
-NCBI_non_scientific_input="NCBI_staxids_non_scientific.txt"
-taxmap_input="taxmap_slv_ssu_lsu_ref_nr_138.1.txt"
-
-# Read in NCBI scientific names file as dictionary
-NCBI_scientific = open(NCBI_scientific_input,'r')
-# Set all file content to lowercase, so that matching of the files later is not
-# depending on upper- or lowercase:
-NCBI_scientific_lower = (line.lower() for line in NCBI_scientific)
-reader1=csv.reader(NCBI_scientific_lower, delimiter='\t')
-NCBI_scientific_dict={}
-for row in reader1:
-	NCBI_scientific_dict[row[0]]=row[1]
-
-# Read in NCBI non-scientific names file as dictionary
-NCBI_non_scientific = open(NCBI_non_scientific_input,'r')
-# Set all file content to lowercase, so that matching of the files later is not
-# depending on upper- or lowercase:
-NCBI_non_scientific_lower = (line.lower() for line in NCBI_non_scientific)
-reader2=csv.reader(NCBI_non_scientific_lower, delimiter='\t')
-NCBI_non_scientific_dict={}
-for row in reader2:
-	NCBI_non_scientific_dict[row[0]]=row[1]
-
-# ======  1. makeblast
-
-# Read in SILVA file as df
-taxmap_df=pd.read_csv(taxmap_input, delimiter = "\t")
-# Extract second last rank of taxonomy paths and turn them into df col "second_last_rank"
-second_last_rank_lst=taxmap_df["path"].str.split(";")
-taxmap_df["second_last_rank"]=second_last_rank_lst.str[-2]
-# Extract organism name of taxmap df, replace unwanted characters,
-# keep only first two words (idealy genus+species) and turn them into df col "species"
-name=taxmap_df["organism_name"].str.replace('[\-\[\]\(\)\\/]', '').str.split()
-taxmap_df['species'] = name.str[0].str.cat(name.str[1], sep=" ", na_rep='' ).str.strip()
-# Replace all species names by NA if their first word (ideally genus) doesn't
-# match the second last rank (which should be genus ideally)
-taxmap_df['species'] = np.where(taxmap_df['second_last_rank'] == taxmap_df['species'].str.split().str[0], taxmap_df['species'], "NA")
-# Merge path and species
-taxmap_df["path"] = taxmap_df["path"] + taxmap_df["species"]
-# Add ; at end of path to keep format consistent
-taxmap_df["path"]=taxmap_df["path"] + ";"
-# Keep all rows that contain species (used later)
-taxmap_df_sp=taxmap_df.loc[taxmap_df['species'] != "NA"]
-# Drop unwanted cols
-taxmap_df=taxmap_df.drop(["organism_name", "taxid", "second_last_rank", "species"], axis=1)
-# Turn all path leters into lowercase
-taxmap_df["path"] = taxmap_df["path"].str.lower()
-# Turn df into dict
-taxmap_dict={}
-for i in range(len(taxmap_df)):
-	taxmap_dict[taxmap_df["primaryAccession.start.stop"][i]]=taxmap_df["path"][i]
-# Split up SILVA taxonomy and invert it
-for key,value in taxmap_dict.items():
-	taxmap_dict[key] = value.split(";")[::-1][1:]
-
-# Loop taxmap taxonomy dictionary over NCBI taxonomy dictionary for each line and
-# match with NCBI staxid when a hit is found
-output_dict={} # Make empty dictionary for matching lines
-for key,value in taxmap_dict.items():
-	l=0
-	while l < len(value):
-		if value[l] in NCBI_scientific_dict:
-			output_dict[key.upper()]=NCBI_scientific_dict[value[l]]
-			hit=True
-			break
-		elif value[l] in NCBI_non_scientific_dict:
-			output_dict[key.upper()]=NCBI_non_scientific_dict[value[l]]
-			hit=True
-			break
-		else:
-			l += 1
-	if hit==False:
-		output_dict[key.upper()]='0'
-
-# Saves the merged dictionary in a defined output file, delimited by tab
-with open("SILVA_accession_numbers_and_NCBI_taxids.txt", 'w') as f:
-    for key in output_dict.keys():
-        f.write("%s\t%s\n"%(key,output_dict[key]))
-
-
-# ======= 2. kraken2
-
-# Set variable names:
-tax_slv_input="tax_slv_ssu_138.1.txt"
-
-# Make nodes.dmp:
-
-## Read in tax file (note: we don't need the LSU tax file as well since all taxa
-## from the LSU tax file are also part of the SSU tax file):
-tax_slv_df_child=pd.read_csv(tax_slv_input, sep='\t', names=['path','taxID','rank','remark','release'], usecols=['path','taxID','rank'])
-## Add paths from species and set their rank to species
-tax_slv_df_child_sp=tax_slv_df_child.append(pd.DataFrame(taxmap_df_sp["path"]))
-tax_slv_df_child_sp['rank']=tax_slv_df_child_sp['rank'].fillna("species")
-## Get NCBI ID for every child and parent path, this now includes all ranks
-child_ncbi_id=[]
-parent_ncbi_id=[]
-for child_path in tax_slv_df_child_sp["path"]:
-	parent_path=re.sub('[^;]*;$', '', child_path)
-	child_lst=child_path.lower().split(";")[::-1][1:]
-	parent_lst=parent_path.lower().split(";")[::-1][1:]
-	l=0
-	hit_child=False
-	while l < len(child_lst):
-		if child_lst[l] in NCBI_scientific_dict:
-			child_id=NCBI_scientific_dict[child_lst[l]]
-			hit_child=True
-			break
-		elif child_lst[l] in NCBI_non_scientific_dict:
-			child_id=NCBI_non_scientific_dict[child_lst[l]]
-			hit_child=True
-			break
-		else:
-			l += 1
-	if hit_child==False:
-		child_id='1'
-	m=0
-	hit_parent=False
-	while m < len(parent_lst):
-		if parent_lst[m] in NCBI_scientific_dict:
-			if NCBI_scientific_dict[parent_lst[m]]==child_id:
-				m+=1
-				continue
-			parent_id=NCBI_scientific_dict[parent_lst[m]]
-			hit_parent=True
-			break
-		elif parent_lst[m] in NCBI_non_scientific_dict:
-			if NCBI_non_scientific_dict[parent_lst[m]]==child_id:
-				m+=1
-				continue
-			parent_id=NCBI_non_scientific_dict[parent_lst[m]]
-			hit_parent=True
-			break
-		else:
-			m += 1
-	if hit_parent==False:
-		parent_id='1'
-	child_ncbi_id.append(child_id)
-	parent_ncbi_id.append(parent_id)
-
-## Add NCBI IDs to df
-tax_slv_df_child_sp["child_ncbi_id"]=child_ncbi_id
-tax_slv_df_child_sp["parent_ncbi_id"]=parent_ncbi_id
-## Generate column indicating # of ranks
-tax_slv_df_child_sp["numranks"]=tax_slv_df_child_sp["path"].str.count(";")
-## Add a row with root as first line, otherwise we can't make the nodes.dmp
-## file as there is no parent ID for domains:
-tax_slv_df_child_sp.loc[-1] = ['root;', '1', 'no rank', '1', '1', '1']
-## Only keep one path per child_ncbi_id, therefore sort df by child_ncbi_id and
-## then numranks and keep only first occurence of child_ncbi_id
-## (= path with the lowest # of ranks per child_ncbi_id)
-tax_slv_df_child_sp=tax_slv_df_child_sp.sort_values(['child_ncbi_id', 'numranks']).drop_duplicates(subset=['child_ncbi_id']).reset_index().drop(["index"], axis=1)
-## Columns have to be separated by "\t|\t" or "\t-\t", which doesn't work as delimiter, so
-## we generate a spacer vector made of "|" and "-" and a spacer for the last
-## column containing "scientific name" to fit the format:
-spacer1=np.repeat("|", len(tax_slv_df_child_sp), axis=0)
-spacer2=np.repeat("-", len(tax_slv_df_child_sp), axis=0)
-spacer3=np.repeat("scientific name", len(tax_slv_df_child_sp), axis=0)
-
-## Generate the final dataframe
-nodes_SILVA_SSU_LSU_df=pd.DataFrame({'child_tax_id':tax_slv_df_child_sp["child_ncbi_id"], 'spacer1':spacer1, \
-'parent_tax_id':tax_slv_df_child_sp["parent_ncbi_id"], 'spacer2':spacer1, 'rank':tax_slv_df_child_sp["rank"], \
-'spacer3':spacer1, 'spacer4':spacer2, 'spacer5':spacer1})
-
-## Write df
-nodes_SILVA_SSU_LSU_df.to_csv("nodes.dmp", sep='\t', na_rep='NA', index=False, \
-header=False)
-
-
-# Make names.dmp
-## Get last rank of every path and remove the last ";"
-last_rank=tax_slv_df_child_sp["path"].str.replace(r';$', '').str.replace(r'^.*;', '')
-
-## Generate the final dataframe
-names_SILVA_SSU_LSU_df=pd.DataFrame({'tax_id':tax_slv_df_child_sp["child_ncbi_id"], 'spacer1':spacer1, \
-'taxon':last_rank, 'spacer2':spacer1, 'spacer3':spacer2, 'spacer4':spacer1, \
-'spacer5':spacer3, 'spacer6':spacer1})
-
-## Write df
-names_SILVA_SSU_LSU_df.to_csv("names.dmp", sep='\t', na_rep='NA', index=False, \
-header=False)
-
-print("Python done!")
-
-EOF
 # Switched back to bash
 
 
 # Merge accession numbers of fasta file and taxid file and add kraken2-specific
 # info to each sequence name (when adding fasta sequences to a kraken2 DB, they
 # need to contain the taxid in the name):
-mergeFilesOnColumn.pl SILVA_138.1_SSU_LSURef_NR99_tax_silva_trunc_edited.tab \
+./subscripts/mergeFilesOnColumn.pl SILVA_${VER}_SSU_LSURef_NR99_tax_silva_trunc_edited.tab \
 SILVA_accession_numbers_and_NCBI_taxids.txt 1 1 \
 | sed 's/^/>/g' | awk -F "\t" '{ print $1 "|kraken:taxid|" $5 " " $2 "\n" $3}' \
-> SILVA_138.1_SSU_LSURef_NR99_tax_silva_trunc_kraken2.fasta
+> SILVA_${VER}_SSU_LSURef_NR99_tax_silva_trunc_kraken2.fasta
 
 
 # Make the kraken2 DB
 mkdir $kraken2DB
 mkdir $kraken2DB/taxonomy
 cp ${cwd}/make_SILVA_databases/nodes.dmp ${cwd}/make_SILVA_databases/names.dmp $kraken2DB/taxonomy # Prepare the taxonomy for the kraken2 DB
-kraken2-build --add-to-library ${cwd}/make_SILVA_databases/SILVA_138.1_SSU_LSURef_NR99_tax_silva_trunc_kraken2.fasta --db $kraken2DB
+kraken2-build --add-to-library ${cwd}/make_SILVA_databases/SILVA_${VER}_SSU_LSURef_NR99_tax_silva_trunc_kraken2.fasta --db $kraken2DB
 kraken2-build --build --db $kraken2DB
 
 # Make the blast DB
-mkdir $blastDB
+mkdir -p $blastDB
 cd $blastDB
-makeblastdb -dbtype 'nucl' -in ${cwd}/make_SILVA_databases/SILVA_138.1_SSU_LSURef_NR99_tax_silva_trunc.fasta \
+makeblastdb -dbtype 'nucl' -in ${cwd}/make_SILVA_databases/SILVA_${VER}_SSU_LSURef_NR99_tax_silva_trunc.fasta \
 -parse_seqids -taxid_map ${cwd}/make_SILVA_databases/SILVA_accession_numbers_and_NCBI_taxids.txt \
 -out $(basename $blastDB)
 cd $cwd
