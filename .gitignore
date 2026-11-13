@@ -49,3 +49,7 @@ vignettes/*.pdf
 
 # vscode
 .vscode
+
+# data and reference files
+scripts/pipelines/make_SILVA_databases/
+data
